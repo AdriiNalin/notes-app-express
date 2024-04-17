@@ -50,6 +50,19 @@ notesRouter.post('/', (req: Request, res: Response) => {
   res.send(204)
 })
 
+// Funktion zum Lesen von Notizen aus der Datei
+function readNotesFromFile(): Note[] {
+  const data = fs.readFileSync('data/notes.json', 'utf-8');
+  return JSON.parse(data).notes;
+}
+
+// Funktion zum Schreiben von Notizen in die Datei
+function writeNotesToFile(notes: Note[]) {
+  const newNotes = { notes: notes };
+  fs.writeFileSync('data/notes.json', JSON.stringify(newNotes));
+}
+
+
 // Read - GET
 // '/' return all saved notes
 notesRouter.get('/', (req: Request, res: Response) => {
@@ -97,7 +110,27 @@ notesRouter.get('/:id', (req: Request, res: Response) => {
 })
 
 // Update - PUT/PATCH -> TODO: Beispiel
-notesRouter.put('/:id', (req: Request, res: Response) => { })
+// Update - PATCH
+notesRouter.patch('/:id', (req: Request, res: Response) => {
+  const id = parseInt(req.params.id);
+  const updatedData = req.body; // Die aktualisierten Daten aus der Anfrage
+
+  const notes = getNotes();
+  const noteIndex = notes.findIndex(note => note.id === id);
+
+  if (noteIndex === -1) {
+    res.status(404).send(`Note with ID ${id} was not found.`);
+  } else {
+    // Die vorhandene Notiz mit den aktualisierten Daten aktualisieren
+    notes[noteIndex] = { ...notes[noteIndex], ...updatedData };
+
+    // Die aktualisierten Notizen in die Datei speichern
+    const newNotes = { notes: notes };
+    fs.writeFileSync('data/notes.json', JSON.stringify(newNotes));
+
+    res.status(200).send(`Note with ID ${id} has been updated.`);
+  }
+});
 
 // Delete - DELETE
 notesRouter.delete('/:id', (req: Request, res: Response) => { })
