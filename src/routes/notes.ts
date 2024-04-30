@@ -6,35 +6,55 @@ import { hasAuthentication } from '../middleware/auth'
 
 export const notesRouter = Router()
 
-/**
- * @route POST /notes - Endpoint to add a new note.
- * @middleware hasAuthentication - The method requires authentication.
- * @description Creates a new note with the given title, content, and user from the request body.
- * @param {Request} req - The reuqest object containing title, content, and user.
- * @param {Response} res - The response object.
- * @returns {void} Responds with a HTTP 204 No Content status upon successful addition of the note.
- */
-notesRouter.post('/', hasAuthentication, (req: Request, res: Response) => {
+// CRUD - Create Read Update Delete
+// PUT/PATCH, POST, GET, DELETE
 
-  const title: string = req.body.title
-  const content: string = req.body.content
-  const user: string = req.body.user
+// Create - POST
+notesRouter.post('/', (req: Request, res: Response) => {
 
-  addNote(title, content, user)
+  // 1. Daten aus der Anfrage auslesen
+  // Wir erwarten, dass wir Informationen zum title, content, user
+  // Warum erwarten wir keine ID? Eine ID liegt in unserer Verantwortung
 
-  res.status(204).send()
+  // const { title, content, user } = req.body
+
+  const title = req.body.title
+  const content = req.body.content
+  const user = req.body.user
+
+  // 2. Daten möchten wir an unsere Datei anhängen
+  // Merke: ID selber festlegen
+
+  // 2.1 alte Daten abfragen
+  const oldNotes = getNotes()
+  const id = oldNotes.length + 1 // keine saubere Lösung, aber reicht aus
+
+  // 2.2 neue Notiz erstellen
+  const newNote: Note = {
+    title: title,
+    content: content,
+    user: user,
+    id: id
+  }
+
+  oldNotes.push(newNote)
+
+  // 2.3 neue Notiz in Datei hinzufügen
+
+  const newNotes = { notes: oldNotes }
+  fs.writeFileSync('data/notes.json', JSON.stringify(newNotes))
+
+  // 3. Rückmeldung geben, ob alles funktioniert hat
+
+  res.send(204)
 })
 
-/**
- * @route GET /notes - Endpoint to retrieve notes belonging to the authenticated user.
- * @middleware hasAuthentication - The method requires authentication.
- * @description Retrieves notes belonging to the authenticated user.
- * @param {Request} req - The request object containing the authorization header.
- * @param {Response} res - The response object containing notes belonging to the user.
- * @returns {void} - Responds with a HTTP 200 OK status and an array of notes belonging to the user.
- */
-notesRouter.get('/', hasAuthentication, (req: Request, res: Response) => {
-  const user = req.headers.authorization!
+// Read - GET
+// '/' return all saved notes
+notesRouter.get('/', (req: Request, res: Response) => {
+
+  // 1. Inhalte aus der Datei auslesen
+  // 2. Daten zwischenspeichern und verarbeiten und vorbereiten
 
   const notes: Note[] = getNotes().filter(note => note.user === user)
 
@@ -60,83 +80,13 @@ notesRouter.get('/:id', hasAuthentication, (req: Request, res: Response) => {
   } else {
     res.status(200).send(note)
   }
+
+  // 4. auf Postman Anfrage senden -> überprüfen, ob alles funktioniert
+
 })
 
-/**
- * @route PUT /notes/:id - Endpoint to update a note by ID.
- * @middleware hasAuthentication - Requires authentication for access.
- * @description Updates a note with the specified ID, replacing its title, content, and user.
- * @param {Request} req - The request object containing the updated note details in the request body 
- * and the note ID in the route parameters.
- * @param {Response} res - The response object.
- * @returns {void} Responds with an HTTP 204 No Content status upon successful note creation. 
- * If the note does not exist, returns HTTP 404 Not Found.
- */
-notesRouter.put('/:id', hasAuthentication, (req: Request, res: Response) => { 
+// Update - PUT/PATCH -> TODO: Beispiel
+notesRouter.put('/:id', (req: Request, res: Response) => { })
 
-  const title: string = req.body.title
-  const content: string = req.body.content
-  const user: string = req.body.user
-  const id: number = parseInt(req.params.id)
-  const oldNote: Note | undefined = getNoteById(id)
-
-  if (oldNote === undefined) {
-    res.status(404).send(`Die Notiz mit ID ${id} wurde nicht gefunden.`)
-    return
-  }
-
-  updateNote(id, title, content, user)
-
-  res.status(204).send()
-})
-
-/**
- * @route PATCH /notes/:id - Endpoint to partially update a note by ID.
- * @middleware hasAuthentication - Requires authentication for access.
- * @description Partially updates a note with the specified ID, allowing modifications to its title, content, or user.
- * @param {Request} req - The request object containing the updated note details in the request body 
- * and the note ID in the route parameters.
- * @param {Response} res - The response object.
- * @returns {void} If the note does not exist, returns HTTP 404 Not Found. Otherwise, returns HTTP 204 No Content on successful update.
- */
-notesRouter.patch('/:id', hasAuthentication, (req: Request, res: Response) => {
-
-  const id: number = parseInt(req.params.id)
-  const oldNote: Note | undefined = getNoteById(id)
-
-  if (oldNote === undefined) {
-    res.status(404).send(`Die Notiz mit ID ${id} wurde nicht gefunden.`)
-    return
-  }
-
-  const title: string = req.body.title ?? oldNote.title
-  const content: string = req.body.content ?? oldNote.content
-  const user: string = req.body.user ?? oldNote.user
-
-  updateNote(id, title, content, user)
-
-  res.status(204).send()
- })
-
-/**
- * @route DELETE /notes/:id
- * @middleware hasAuthentication
- * @description Deletes a note by ID provided as a route parameter.
- * @param {Request} req - The request object.
- * @param {Response} res - The response object.
- * @returns {void} If the note does not exist, returns HTTP 404 Not Found. Otherwise, returns HTTP 204 No Content on successful deletion.
- */
-notesRouter.delete('/:id', hasAuthentication, (req: Request, res: Response) => { 
-
-  const id: number = parseInt(req.params.id)
-  const oldNote: Note | undefined = getNoteById(id)
-
-  if (oldNote === undefined) {
-    res.status(404).send(`Die Notiz mit ID ${id} wurde nicht gefunden.`)
-    return
-  }
-
-  deleteNoteById(id)
-
-  res.status(204).send()
-})
+// Delete - DELETE
+notesRouter.delete('/:id', (req: Request, res: Response) => { })
